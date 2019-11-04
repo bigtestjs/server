@@ -1,5 +1,6 @@
 import { fork, Execution, Operation } from 'effection';
 import * as events from 'events';
+import { exec } from 'child_process';
 
 const Fork = fork(function*() {}).constructor;
 
@@ -53,5 +54,16 @@ export class EventEmitter<T extends events.EventEmitter, E extends string | symb
 
   on(event: E): Operation {
     return resumeOnEvent(this.inner, event);
+  }
+
+  forkOn(event: E, handler: SequenceFn) {
+    let emitter = this;
+    fork(function* () {
+      while (true) {
+        let args = emitter.on(event);
+
+        fork(handler(...args));
+      }
+    })
   }
 }

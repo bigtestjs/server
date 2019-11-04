@@ -22,36 +22,24 @@ export function* createSocketServer(port: number, handler: ConnectionHandler, re
     httpServer: server
   });
 
-  let execution = getCurrentExecution();
-
-  function spawnConnection(request: Request) {
+  new EventEmitter(socket).forkOn("request", function* requestHandler(request: Request) {
     let connection = request.accept(null, request.origin);
-    execution.resume(connection);
-  }
-
-  socket.on("request", spawnConnection);
+    let emitter = new EventEmitter(connection);
+    let handle = fork(function* setupConnection() {
+      emitter.forkOn("error", function*(error) { handle.throw(error) });
+      emitter.forkOn("close", function*() { handle.halt() });
+      try {
+        yield handler(new Connection(connection));
+        handle.halt();
+      } finally {
+        connection.close();
+      }
+    })
+  });
 
   try {
-    while (true) {
-      let connection: WebSocketConnection = yield;
-
-      let handle = fork(function* setupConnection() {
-        let halt = () => handle.halt();
-        let fail = (error) => handle.throw(error);
-        connection.on("error", fail);
-        connection.on("close", halt);
-        try {
-          yield handler(new Connection(connection));
-        } finally {
-          connection.off("close", halt);
-          connection.off("error", fail);
-          connection.close();
-        }
-      }) as any;
-
-    }
+    yield;
   } finally {
-    socket.off("request", spawnConnection);
     server.close();
   }
 }
