@@ -5,6 +5,13 @@ jobs:
     name: Node Code Formatter
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v1
+    - name: install node v12
+      uses: actions/setup-node@v1
+      with:
+        node-version: 12
+    - name: yarn install
+      run: yarn install
     - name: Node Code Formatter
       uses: MarvinJWendt/run-node-formatter@1.5.0
       env:
