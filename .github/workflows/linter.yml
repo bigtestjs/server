@@ -8,4 +8,4 @@ jobs:
     - name: Node Code Formatter
       uses: MarvinJWendt/run-node-formatter@1.5.0
       env:
-        GITHUB_TOKEN: ${{ secrets.JACK_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
