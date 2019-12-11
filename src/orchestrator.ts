@@ -1,11 +1,9 @@
-import { fork } from 'effection';
+import { fork, receive, Sequence, Operation, Execution } from 'effection';
 
-import { ProxyServer } from './proxy';
-import { CommandServer } from './command-server';
-import { ConnectionServer } from './connection-server';
-import { AgentServer } from './agent-server';
-
-import { Process } from './process';
+import { createProxyServer } from './proxy';
+import { createCommandServer } from './command-server';
+import { createConnectionServer } from './connection-server';
+import { createAgentServer } from './agent-server';
 
 type OrchestratorOptions = {
   appPort: number;
@@ -13,50 +11,54 @@ type OrchestratorOptions = {
   commandPort: number;
   connectionPort: number;
   agentPort: number;
+  delegate?: Execution;
 }
 
-export class Orchestrator extends Process {
-  private proxyServer: ProxyServer;
-  private commandServer: CommandServer;
-  private connectionServer: ConnectionServer;
-  private agentServer: AgentServer;
+export function createOrchestrator(options: OrchestratorOptions): Operation {
+  return function *orchestrator(): Sequence {
+    let orchestrator = this; // eslint-disable-line @typescript-eslint/no-this-alias
 
-  constructor(public options: OrchestratorOptions) {
-    super();
-
-    this.proxyServer = new ProxyServer({
-      port: this.options.proxyPort,
-      targetPort: this.options.appPort,
-      inject: `<script src="http://localhost:${this.options.agentPort}/harness.js"></script>`,
-    });
-
-    this.commandServer = new CommandServer({
-      port: this.options.commandPort
-    });
-
-    this.connectionServer = new ConnectionServer({
-      port: this.options.connectionPort,
-      proxyPort: this.options.proxyPort,
-    });
-
-    this.agentServer = new AgentServer({
-      port: this.options.agentPort,
-    });
-  }
-
-  protected *run(ready) {
     console.log('[orchestrator] starting');
 
-    yield Promise.all([
-      this.proxyServer.start(),
-      this.commandServer.start(),
-      this.connectionServer.start(),
-      this.agentServer.start(),
-    ]);
+    fork(createProxyServer(orchestrator, {
+      port: options.proxyPort,
+      targetPort: options.appPort,
+      inject: `<script src="http://localhost:${options.agentPort}/harness.js"></script>`,
+    }));
+
+    fork(createCommandServer(orchestrator, {
+      port: options.commandPort,
+    }));
+
+    fork(createConnectionServer(orchestrator, {
+      port: options.connectionPort,
+      proxyPort: options.proxyPort,
+    }));
+
+    fork(createAgentServer(orchestrator, {
+      port: options.agentPort,
+    }));
+
+    yield fork(function*() {
+      fork(function*() {
+        yield receive(orchestrator, { ready: "proxy" });
+      });
+      fork(function*() {
+        yield receive(orchestrator, { ready: "command" });
+      });
+      fork(function*() {
+        yield receive(orchestrator, { ready: "connection" });
+      });
+      fork(function*() {
+        yield receive(orchestrator, { ready: "agent" });
+      });
+    });
 
     console.log("[orchestrator] running!");
 
-    ready();
+    if(options.delegate) {
+      options.delegate.send({ ready: "orchestrator" });
+    }
 
     try {
       yield
