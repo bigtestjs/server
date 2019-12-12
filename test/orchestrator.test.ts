@@ -14,16 +14,16 @@ describe("orchestrator", () => {
     let response: Response;
     let body: string;
     beforeEach(async () => {
-      response = await actions.get('http://localhost:24102');
-      body = await response.text();
+      response = await actions.get('http://localhost:24102?query={echo(text:"Hello World")}');
+      body = await response.json();
     });
 
     it('responds successfully', () => {
       expect(response.ok).toEqual(true);
     });
 
-    it('contains the ping text', () => {
-      expect(body).toContain("Your wish is my command");
+    it('echos a response', () => {
+      expect(body).toEqual({ data: { echo: "Hello World" } });
     });
   });
 });

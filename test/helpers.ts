@@ -1,5 +1,5 @@
 import { AbortController } from 'abort-controller';
-import fetch, { Response } from 'node-fetch';
+import fetch, { Response, RequestInit } from 'node-fetch';
 import { fork, receive, Execution, Operation } from 'effection';
 
 import { beforeEach, afterEach } from 'mocha';
@@ -28,14 +28,14 @@ class World {
     return (this.execution as any).fork(operation);
   }
 
-  get(url: string): Promise<Response>{
-    return this.request('get', url);
+  get(url: string, init?: RequestInit): Promise<Response>{
+    return this.request(url, {...init, method: 'get' });
   }
 
-  request(method: RequestMethod, url: string): Promise<Response> {
+  request(url: string, init?: RequestInit): Promise<Response> {
     let controller = new AbortController();
     let { signal } = controller;
-    let result = fetch(url, { method, signal });
+    let result = fetch(url, {...init, signal });
 
     this.fork(function* abortListener() {
       try {
