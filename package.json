@@ -8,8 +8,8 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "start": "ts-node -r module-alias/register bin/start.ts",
-    "watch": "ts-node -r module-alias/register bin/watch.ts",
+    "start": "./node_modules/.bin/ts-node -r module-alias/register bin/start.ts",
+    "watch": "./node_modules/.bin/ts-node -r module-alias/register bin/watch.ts",
     "lint": "eslint 'src/**/*.ts' 'bin/**/*.ts' 'agent/**/*.ts'",
     "test": "mocha -r module-alias/register -r ts-node/register test/**/*.test.ts"
   },
@@ -36,7 +36,7 @@
     "parcel": "^1.12.4",
     "parcel-bundler": "^1.12.4",
     "trumpet": "^1.7.2",
-    "ts-node": "^8.4.1",
+    "ts-node": "^8.5.4",
     "typescript": "^3.6.3",
     "websocket": "^1.0.30"
   },
