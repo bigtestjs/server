@@ -9,7 +9,7 @@ interface AgentServerOptions {
 export function createAgentServer(orchestrator: Execution, options: AgentServerOptions): Operation {
   return function *agentServer(): Sequence {
     
-    let child = spawn('./node_modules/.bin/parcel', ['-p', `${options.port}`, 'agent/index.html', 'agent/harness.ts'], {
+    let child = spawn('parcel', ['-p', `${options.port}`, 'agent/index.html', 'agent/harness.ts'], {
       stdio: 'inherit'
     });
 
