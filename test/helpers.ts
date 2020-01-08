@@ -76,6 +76,8 @@ before(async function() {
     appCommand: "react-scripts start",
     appEnv: { "PORT": "24100", "BROWSER": "none" },
     appDir: "test/app",
+    testFiles: ["test/fixtures/*.t.ts"],
+    testManifestPath: "test/manifest.js",
     appPort: 24100,
     proxyPort: 24101,
     commandPort: 24102,
