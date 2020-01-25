@@ -39,7 +39,7 @@
     "@types/node": "^12.7.11",
     "@types/websocket": "^1.0.0",
     "chokidar": "^3.3.1",
-    "effection": "^0.4.0-11b36f4",
+    "effection": "^0.4.0-4eaab4d",
     "glob": "^7.1.6",
     "http-proxy": "^1.18.0",
     "module-alias": "^2.2.2",
