@@ -18,7 +18,8 @@ export function on(emitter: EventEmitter, eventName: EventName): Operation {
 export function watch(emitter: EventEmitter, names: EventName | EventName[]): Operation {
   return ({ resume, context: { parent }}) => {
     for(let name of [].concat(names)) {
-      let context = parent as any;
+
+      let context = parent as any; // eslint-disable-line @typescript-eslint/no-explicit-any
       let listener = (...args) => {
         context.spawn(send({ event: name, args: args }));
       }

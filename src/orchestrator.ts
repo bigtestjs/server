@@ -1,4 +1,4 @@
-import { fork, join, send, receive, Sequence, Operation, Context } from 'effection';
+import { fork, send, receive, Operation, Context } from 'effection';
 
 import { createProxyServer } from './proxy';
 import { createCommandServer } from './command-server';
