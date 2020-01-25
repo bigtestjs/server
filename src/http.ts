@@ -1,6 +1,6 @@
 import * as http from 'http';
 import { IncomingMessage, ServerResponse } from 'http';
-import { Operation, Sequence, fork } from 'effection';
+import { Operation, fork, monitor } from 'effection';
 import { on } from '@effection/events';
 
 export { IncomingMessage } from 'http';
@@ -8,33 +8,29 @@ export { IncomingMessage } from 'http';
 import { resumeOnCb } from './util';
 
 export type RequestHandler = (req: IncomingMessage, res: Response) => Operation;
-export type ReadyCallback = (server: http.Server) => void;
 
-export function* createServer(port: number, handler: RequestHandler, ready: ReadyCallback = x => x): Sequence {
+export type ReadyServer = (server: http.Server) => Operation;
+
+export function* createServer(port: number, handler: RequestHandler, ready: ReadyServer): Operation {
   let server = http.createServer();
 
   yield listen(server, port);
 
-  ready(server);
+  yield ready(server);
 
   try {
     while (true) {
       let [request, response]: [IncomingMessage, ServerResponse] = yield on(server, "request");
-      fork(function* outerRequestHandler() {
-        let requestErrorMonitor = fork(function* () {
+      yield fork(function* outerRequestHandler() {
+        yield monitor(function* () {
           let [error]: [Error] = yield on(request, "error");
           throw error;
         });
-        let responseErrorMonitor = fork(function* () {
+        yield monitor(function* () {
           let [error]: [Error] = yield on(response, "error");
           throw error;
         });
-        try {
-          yield handler(request, new Response(response));
-        } finally {
-          requestErrorMonitor.halt();
-          responseErrorMonitor.halt();
-        }
+        yield handler(request, new Response(response));
       });
     }
   } finally {
@@ -56,7 +52,7 @@ export class Response {
 
 export function* listen(server: http.Server, port: number): Operation {
 
-  let errors = fork(function* errorListener() {
+  let errors = yield fork(function* errorListener() {
     let [error]: [Error] = yield on(server, "error");
     throw error;
   })

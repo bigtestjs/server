@@ -8,7 +8,7 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "start": "ts-node -r module-alias/register bin/start.ts",
+    "start": "node -r ts-node/register -r module-alias/register bin/start.ts",
     "watch": "ts-node -r module-alias/register bin/watch.ts",
     "lint": "eslint 'src/**/*.ts' 'bin/**/*.ts' 'agent/**/*.ts'",
     "test": "mocha -r ./test/setup test/**/*.test.ts",
@@ -39,7 +39,7 @@
     "@types/node": "^12.7.11",
     "@types/websocket": "^1.0.0",
     "chokidar": "^3.3.1",
-    "effection": "^0.4.0-a3f2e20",
+    "effection": "^0.4.0-11b36f4",
     "glob": "^7.1.6",
     "http-proxy": "^1.18.0",
     "module-alias": "^2.2.2",

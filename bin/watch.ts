@@ -1,45 +1,38 @@
 import { watch } from 'fs';
 import { spawn } from 'child_process';
-import { fork, Sequence } from 'effection';
+import { main, fork, join, monitor, send, receive, Operation, Context } from 'effection';
 import { on } from '@effection/events';
 
-function* start(): Sequence {
+function* start(): Operation {
   let [ cmd, ...args ] = process.argv.slice(2);
 
-  let listener = fork(function* changes() {
-    let watcher = watch('src', { recursive: true });
-    try {
-      while (true) {
-        yield on(watcher, "change");
-        console.log('change detected, restarting....');
-        restart();
-      }
-    } finally {
-      watcher.close();
-    }
-  });
-
-  let current = { halt: (x = undefined) => x };
-  let restart = () => {
-    current.halt();
-    current = this.fork(function*() {
+  let supervisor: Context = yield fork(function*() {
+    yield monitor(function* changes() {
+      let watcher = watch('src', { recursive: true });
       try {
-        yield launch(cmd, args);
-        listener.halt();
-      } catch (error) {
-        console.log(error);
+        while (true) {
+          yield on(watcher, "change");
+          console.log('change detected, restarting....');
+          send("restart", supervisor);
+        }
+      } finally {
+        watcher.close();
       }
     })
-  };
 
-  restart();
+    do {
+      let proc = yield fork(launch(cmd, args));
+      yield receive("restart");
+      proc.halt();
+    } while (true);
+  });
 }
 
-function* launch(cmd: string, args: string[]): Sequence {
+function* launch(cmd: string, args: string[]): Operation {
   let child = spawn(cmd, args, { stdio: 'inherit'});
 
-  fork(function*() {
-    let errors = fork(function*() {
+  yield fork(function*() {
+    let errors = yield fork(function*() {
       let [ error ] = yield on(child, "error");
       throw error;
     });
@@ -55,18 +48,20 @@ function* launch(cmd: string, args: string[]): Sequence {
       child.kill();
     }
   })
-
-
 }
 
-fork(function* main() {
-  let interrupt = () => { console.log('');  this.halt()};
-  process.on('SIGINT', interrupt);
+main(function* () {
+  let child = yield fork(start);
+
+  yield monitor(function*() {
+    yield on(process, 'SIGINT');
+    console.log('');
+    child.halt();
+  });
+
   try {
-    yield start;
-  } catch (e) {
-    console.log(e);
-  } finally {
-    process.off('SIGINT', interrupt);
+    yield join(child);
+  } catch (err) {
+    console.error(err);
   }
 });

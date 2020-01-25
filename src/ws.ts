@@ -6,19 +6,19 @@ import {
   IMessage as Message
 } from 'websocket';
 
-import { fork, Sequence, Operation } from 'effection';
+import { fork, monitor, Operation } from 'effection';
 import { resumeOnCb } from './util';
 
 import { on } from '@effection/events';
 
-import { listen, ReadyCallback } from './http';
+import { listen, ReadyServer } from './http';
 
-export function* createSocketServer(port: number, handler: ConnectionHandler, ready: ReadyCallback = x=>x): Sequence {
+export function* createSocketServer(port: number, handler: ConnectionHandler, ready: ReadyServer): Operation {
   let server = createServer();
 
   yield listen(server, port);
 
-  ready(server);
+  yield ready(server);
 
   let socket = new WebSocketServer({
     httpServer: server
@@ -29,27 +29,29 @@ export function* createSocketServer(port: number, handler: ConnectionHandler, re
       let [request]: [Request] = yield on(socket, "request");
       let connection = request.accept(null, request.origin);
 
-      let handle = fork(function* setupConnection() {
-        let halt = () => handle.halt();
-        let fail = (error: Error) => handle.throw(error);
-        connection.on("error", fail);
-        connection.on("close", halt);
+      let handleConnection = yield fork(function* setupConnection() {
+        yield monitor(function*() {
+          yield on(connection, "close");
+          handleConnection.halt();
+        })
+        yield monitor(function*() {
+          let [error]: [Error] = yield on(connection, "error");
+          throw error;
+        })
+
         try {
           yield handler(connection);
         } finally {
-          connection.off("close", halt);
-          connection.off("error", fail);
           connection.close();
         }
       });
-
     }
   } finally {
     server.close();
   }
 }
 
-export function send(connection: Connection, data: string): Operation {
+export function sendData(connection: Connection, data: string): Operation {
   return resumeOnCb(cb => connection.send(data, cb));
 }
 

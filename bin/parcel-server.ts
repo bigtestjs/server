@@ -1,22 +1,16 @@
-import { fork } from 'effection';
-import { createParcelServer } from '../src/parcel-server';
+import { main } from 'effection';
 import * as yargs from 'yargs';
+
+import { interruptable } from './interruptable';
+
+import { createParcelServer } from '../src/parcel-server';
 
 yargs
   .command('$0 [files..]', 'run the parcel server', () => {}, (argv) => {
-    fork(function*() {
-      let interrupt = () => { this.halt() };
-      process.on('SIGINT', interrupt);
-
-      try {
-        yield createParcelServer(argv.files as string[], { port: argv.port as number }, {
-          outFile: argv.outFile,
-          global: argv.global,
-        });
-      } finally {
-        process.off('SIGINT', interrupt);
-      }
-    });
+    main(interruptable(createParcelServer(argv.files as string[], { port: argv.port as number }, {
+        outFile: argv.outFile,
+        global: argv.global,
+    })));
   })
   .option('port', {
     alias: 'p',

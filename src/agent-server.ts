@@ -1,29 +1,31 @@
-import { Sequence, Execution } from 'effection';
+import { ChildProcess, forkChildProcess } from '@effection/child_process';
 import { on } from '@effection/events';
-import { ChildProcess, fork as forkProcess } from '@effection/child_process';
+import { Context, Operation, send } from 'effection';
 
 interface AgentServerOptions {
   port: number;
 };
 
-export function* createAgentServer(orchestrator: Execution, options: AgentServerOptions): Sequence {
+export function createAgentServer(orchestrator: Context, options: AgentServerOptions): Operation {
+
   // TODO: @precompile we want this to use a precompiled agent server when used as a package
-  let child: ChildProcess = yield forkProcess(
-    './bin/parcel-server.ts',
-    ['-p', `${options.port}`, 'agent/index.html', 'agent/harness.ts'],
-    {
-      execPath: 'ts-node',
-      execArgv: [],
-      stdio: ['pipe', 'pipe', 'pipe', 'ipc']
-    }
-  );
+  let command = './bin/parcel-server.ts';
+  let args = ['-p', `${options.port}`, 'agent/index.html', 'agent/harness.ts'];
+  let stdio: Array<("pipe"|"ipc")> = ['pipe', 'pipe', 'pipe', 'ipc'];
+  let attrs = {
+    execPath: 'ts-node',
+    execArgv: [],
+    stdio
+  };
 
-  let message: {type: string};
-  do {
-    [message] = yield on(child, "message");
-  } while(message.type !== "ready");
+  return forkChildProcess(command, args, attrs, function* (child: ChildProcess) {
+    let message: {type: string};
+    do {
+      [message] = yield on(child, "message");
+    } while(message.type !== "ready");
 
-  orchestrator.send({ ready: "agent" });
+    yield send({ ready: "agent"}, orchestrator);
 
-  yield on(child, "exit");
+    return yield on(child, "exit");
+  });
 }

@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { Controller } from 'effection';
+import { send, monitor, Operation } from 'effection';
 
 type EventName = string | symbol;
 
@@ -7,40 +7,34 @@ type EventName = string | symbol;
  * Takes an event emitter and event name and returns a yieldable
  * operation which resumes when the event occurrs.
  */
-export function on(emitter: EventEmitter, eventName: EventName): Controller {
-  return (execution) => {
-    let resume = (...args: unknown[]) => execution.resume(args);
+export function on(emitter: EventEmitter, eventName: EventName): Operation {
+  return control => {
+    let resume = (...args: unknown[]) => control.resume(args);
     emitter.on(eventName, resume);
     return () => emitter.off(eventName, resume);
   }
 }
 
-export function watch(emitter: EventEmitter, names: EventName | EventName[]): Controller {
-  return (execution) => {
+export function watch(emitter: EventEmitter, names: EventName | EventName[]): Operation {
+  return ({ resume, context: { parent }}) => {
     for(let name of [].concat(names)) {
+      let context = parent as any;
       let listener = (...args) => {
-        execution.send({ event: name, args: args });
+        context.spawn(send({ event: name, args: args }));
       }
 
       emitter.on(name, listener);
-      execution.atExit(() => {
+      context.ensure(() => {
         emitter.off(name, listener);
       });
     }
-    execution.resume(emitter);
+    resume(emitter);
   }
 }
 
-export function watchError(emitter: EventEmitter): Controller {
-  return (execution) => {
-    let listener = (error) => {
-      execution.throw(error);
-    }
-
-    emitter.on("error", listener);
-    execution.atExit(() => {
-      emitter.off("error", listener);
-    });
-    execution.resume(emitter);
-  }
+export function watchError(emitter: EventEmitter): Operation {
+  return monitor(function*() {
+    let [error]: [Error] = yield on(emitter, "error");
+    throw error;
+  });
 }
