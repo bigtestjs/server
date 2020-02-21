@@ -16,7 +16,7 @@ const BUILD_DIR = `${TEST_DIR}/build`
 const DIST_DIR = `${TEST_DIR}/dist`
 const MANIFEST_PATH = `${SRC_DIR}/manifest.js`
 
-const { mkdir, writeFile, readFile } = fs.promises;
+const { mkdir, copyFile, readFile } = fs.promises;
 
 describe('manifest builder', () => {
   let atom: Atom;
@@ -26,7 +26,7 @@ describe('manifest builder', () => {
   beforeEach((done) => rmrf(TEST_DIR, done));
   beforeEach(async () => {
     await mkdir(SRC_DIR, { recursive: true });
-    await writeFile(MANIFEST_PATH, "module.exports = { sources: [ 'boo' ] };");
+    await copyFile('./test/fixtures/raw-tree-format.t.js', MANIFEST_PATH);
 
     atom = new Atom();
     delegate = new Mailbox();
@@ -64,7 +64,7 @@ describe('manifest builder', () => {
 
   describe('updating the manifest and then reading it', () => {
     beforeEach(async () => {
-      await writeFile(MANIFEST_PATH, "module.exports = { sources: ['foo' ] };");
+      await copyFile('./test/fixtures/empty.t.js', MANIFEST_PATH);
       await actions.receive(delegate, { event: "update" });
     });
 
