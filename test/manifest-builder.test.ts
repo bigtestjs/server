@@ -51,14 +51,14 @@ describe('manifest builder', () => {
     });
 
     it('contains the built manifest', () => {
-      expect(body).toContain('boo');
+      expect(body).toContain('Signing In');
     });
   });
 
   describe('reading manifest from state on start', () => {
     it('returns the manifest from the state', () => {
-      let { manifest: { sources: [ first ] } } = atom.get() ;
-      expect(first).toEqual('boo');
+      expect(atom.get().manifest.fileName).toMatch(/manifest-[0-9a-f]+\.js/);
+      expect(atom.get().manifest.description).toEqual('Signing In');
     });
   });
 
@@ -69,7 +69,8 @@ describe('manifest builder', () => {
     });
 
     it('returns the updated manifest from the state', () => {
-      expect(atom.get().manifest.sources).toEqual(['foo']);
+      expect(atom.get().manifest.fileName).toMatch(/manifest-[0-9a-f]+\.js/);
+      expect(atom.get().manifest.description).toEqual('An empty test with no steps and no children');
     });
   });
 });
